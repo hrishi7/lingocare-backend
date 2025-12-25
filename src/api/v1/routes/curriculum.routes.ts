@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { healthCheck, generateCurriculum } from '../controllers/curriculum.controller.js';
+import { healthCheck, generateCurriculum, generateCurriculumStream } from '../controllers/curriculum.controller.js';
 import config from '../../../config/index.js';
 import { BadRequestError } from '../../../utils/AppError.js';
 
@@ -26,11 +26,14 @@ const upload = multer({
 /**
  * Curriculum Routes
  * 
- * GET  /health   - Health check
- * POST /generate - Generate curriculum from PDF
+ * GET  /health          - Health check
+ * POST /generate        - Generate curriculum from PDF (standard)
+ * POST /generate-stream - Generate curriculum from PDF (streaming SSE)
  */
 
 router.get('/health', healthCheck);
 router.post('/generate', upload.single('file'), generateCurriculum);
+router.post('/generate-stream', upload.single('file'), generateCurriculumStream);
 
 export default router;
+

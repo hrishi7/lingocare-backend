@@ -35,6 +35,46 @@ export class MockAIAdapter implements IAIService {
     return curriculum;
   }
 
+  /**
+   * Generate curriculum with streaming simulation
+   * @param extractedContent - Text extracted from PDF
+   * @param onChunk - Callback for each simulated chunk
+   * @returns Promise of complete curriculum
+   */
+  async generateCurriculumStream(
+    extractedContent: string,
+    onChunk?: (chunk: string, index: number) => void
+  ): Promise<Curriculum> {
+    logger.info('MockAIAdapter: Generating curriculum with streaming simulation');
+    
+    // Parse content first
+    const curriculum = this.parseContentToCurriculum(extractedContent);
+    
+    // Simulate streaming by sending JSON in chunks
+    if (onChunk) {
+      const jsonString = JSON.stringify(curriculum, null, 2);
+      const chunkSize = 100; // Characters per chunk
+      const chunks = Math.ceil(jsonString.length / chunkSize);
+      
+      for (let i = 0; i < chunks; i++) {
+        const start = i * chunkSize;
+        const end = Math.min(start + chunkSize, jsonString.length);
+        const chunk = jsonString.substring(start, end);
+        
+        onChunk(chunk, i);
+        
+        // Simulate network delay between chunks
+        await this.simulateDelay(50);
+      }
+    }
+    
+    logger.info({ 
+      modules: curriculum.modules.length,
+    }, 'MockAIAdapter: Streaming curriculum generated');
+    
+    return curriculum;
+  }
+
   private async simulateDelay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }

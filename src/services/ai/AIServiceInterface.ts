@@ -20,8 +20,20 @@ export interface IAIService {
   generateCurriculum(extractedContent: string): Promise<Curriculum>;
   
   /**
+   * Generate curriculum with streaming support
+   * @param extractedContent - Text extracted from uploaded PDF
+   * @param onChunk - Optional callback for each streamed chunk
+   * @returns Structured curriculum object
+   */
+  generateCurriculumStream(
+    extractedContent: string,
+    onChunk?: (chunk: string, index: number) => void
+  ): Promise<Curriculum>;
+  
+  /**
    * Get the name of the AI provider
    * @returns Provider name for logging/debugging
    */
   getName(): string;
 }
+

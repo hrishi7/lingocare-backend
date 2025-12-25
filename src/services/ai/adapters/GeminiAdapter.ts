@@ -56,6 +56,60 @@ export class GeminiAdapter implements IAIService {
     }
   }
 
+  /**
+   * Generate curriculum using streaming API
+   * @param extractedContent - Text extracted from PDF
+   * @param onChunk - Callback for each streamed chunk
+   * @returns Promise of complete curriculum
+   */
+  async generateCurriculumStream(
+    extractedContent: string,
+    onChunk?: (chunk: string, index: number) => void
+  ): Promise<Curriculum> {
+    logger.info('GeminiAdapter: Generating curriculum with Gemini streaming API');
+    
+    try {
+      const prompt = CURRICULUM_GENERATION_PROMPT + extractedContent;
+      
+      // Use streaming API
+      const result = await this.model.generateContentStream(prompt);
+      
+      let fullText = '';
+      let chunkIndex = 0;
+      
+      // Process each chunk as it arrives
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        fullText += chunkText;
+        
+        // Notify caller of new chunk
+        if (onChunk) {
+          onChunk(chunkText, chunkIndex);
+        }
+        
+        chunkIndex++;
+        logger.debug({ chunkIndex, chunkLength: chunkText.length }, 'Received chunk from Gemini');
+      }
+      
+      logger.debug({ 
+        totalChunks: chunkIndex,
+        responseLength: fullText.length 
+      }, 'Streaming complete from Gemini');
+      
+      // Parse the complete response
+      const curriculum = this.parseResponse(fullText);
+      
+      logger.info({ 
+        modules: curriculum.modules.length,
+      }, 'GeminiAdapter: Streaming curriculum generated successfully');
+      
+      return curriculum;
+    } catch (error) {
+      logger.error({ error }, 'GeminiAdapter: Failed to generate curriculum via streaming');
+      throw InternalError('Failed to generate curriculum using AI streaming. Please try again.');
+    }
+  }
+
   private parseResponse(text: string): Curriculum {
     try {
       // Try to extract JSON from the response
