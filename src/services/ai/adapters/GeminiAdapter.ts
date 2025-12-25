@@ -66,10 +66,21 @@ export class GeminiAdapter implements IAIService {
     extractedContent: string,
     onChunk?: (chunk: string, index: number) => void
   ): Promise<Curriculum> {
+    const streamStartTime = Date.now();
+    let firstChunkTime: number | null = null;
+    
     logger.info('GeminiAdapter: Generating curriculum with Gemini streaming API');
     
     try {
       const prompt = CURRICULUM_GENERATION_PROMPT + extractedContent;
+      
+      // Log input size for demo comparison
+      const estimatedTokens = Math.ceil(prompt.length / 4);
+      logger.info({ 
+        promptLength: prompt.length,
+        contentLength: extractedContent.length,
+        estimatedTokens,
+      }, '📝 Request Details - Sending to Gemini API');
       
       // Use streaming API with optimized configuration
       const result = await this.model.generateContentStream({
@@ -87,6 +98,16 @@ export class GeminiAdapter implements IAIService {
       
       // Process each chunk as it arrives
       for await (const chunk of result.stream) {
+        // Measure Time-to-First-Token (TTFT)
+        if (firstChunkTime === null) {
+          firstChunkTime = Date.now();
+          const ttft = firstChunkTime - streamStartTime;
+          logger.info({ 
+            ttft,
+            ttftSeconds: (ttft / 1000).toFixed(2),
+          }, '⏱️  TIME TO FIRST TOKEN (TTFT) - First chunk received!');
+        }
+        
         const chunkText = chunk.text();
         fullText += chunkText;
         
@@ -96,20 +117,38 @@ export class GeminiAdapter implements IAIService {
         }
         
         chunkIndex++;
-        logger.debug({ chunkIndex, chunkLength: chunkText.length }, 'Received chunk from Gemini');
+        
+        // Log every 50th chunk for demo visibility
+        if (chunkIndex % 50 === 0) {
+          logger.debug({ chunkIndex, chunkLength: chunkText.length }, '📦 Streaming in progress...');
+        }
       }
       
-      logger.debug({ 
+      const totalTime = Date.now() - streamStartTime;
+      const streamingTime = firstChunkTime ? totalTime - (firstChunkTime - streamStartTime) : 0;
+      
+      logger.info({ 
         totalChunks: chunkIndex,
-        responseLength: fullText.length 
-      }, 'Streaming complete from Gemini');
+        responseLength: fullText.length,
+        totalTimeMs: totalTime,
+        totalTimeSeconds: (totalTime / 1000).toFixed(2),
+        ttftMs: firstChunkTime ? firstChunkTime - streamStartTime : null,
+        ttftSeconds: firstChunkTime ? ((firstChunkTime - streamStartTime) / 1000).toFixed(2) : null,
+        streamingTimeMs: streamingTime,
+        streamingTimeSeconds: (streamingTime / 1000).toFixed(2),
+        ttftPercentage: firstChunkTime ? Math.round(((firstChunkTime - streamStartTime) / totalTime) * 100) : null,
+      }, '📊 STREAMING COMPLETE - Performance Metrics');
       
       // Parse the complete response
       const curriculum = this.parseResponse(fullText);
       
       logger.info({ 
         modules: curriculum.modules.length,
-      }, 'GeminiAdapter: Streaming curriculum generated successfully');
+        topics: curriculum.modules.reduce((sum, m) => sum + m.topics.length, 0),
+        lessons: curriculum.modules.reduce((sum, m) => 
+          sum + m.topics.reduce((tsum, t) => tsum + t.lessons.length, 0), 0
+        ),
+      }, 'GeminiAdapter: ✅ Streaming curriculum generated successfully');
       
       return curriculum;
     } catch (error) {

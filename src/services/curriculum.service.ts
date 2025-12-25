@@ -59,11 +59,19 @@ export class CurriculumService {
       // 2. Extract text from PDF
       onProgress('parsing_pdf', 'Parsing PDF document...');
       const extractedContent = await parsePDF(fileBuffer);
-      logger.debug({ contentLength: extractedContent.length }, 'PDF content extracted');
+      
+      // Log PDF metrics for demo
+      const estimatedPages = Math.ceil(extractedContent.length / 2500); // ~2500 chars per page
+      logger.info({ 
+        contentLength: extractedContent.length,
+        estimatedPages,
+        sizeKB: (fileBuffer.length / 1024).toFixed(2),
+      }, '📄 PDF Parsed - File Metrics');
       
       // 3. Notify: PDF parsed
       onProgress('pdf_parsed', 'PDF parsed successfully', { 
-        contentLength: extractedContent.length 
+        contentLength: extractedContent.length,
+        estimatedPages,
       });
       
       // 4. Get AI service
