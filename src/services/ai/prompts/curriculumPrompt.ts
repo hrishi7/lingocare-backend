@@ -1,47 +1,41 @@
 /**
- * Curriculum Generation Prompt
+ * Curriculum Generation Prompt - BALANCED FOR SPEED AND QUALITY
  * 
- * This prompt is used to instruct the AI to generate a structured curriculum
- * from extracted PDF content.
+ * Key optimizations:
+ * 1. Direct, concise language (no verbose explanations)
+ * 2. Sequential generation instruction for streaming
+ * 3. Proper numbering and formatting requirements maintained
+ * 4. Meaningful descriptions enforced
  * 
- * Key Design Decisions:
- * 1. Request JSON output for easy parsing
- * 2. Specify exact structure matching our TypeScript interfaces
- * 3. Request auto-filling of missing topics/lessons (assignment requirement)
- * 4. Keep descriptions brief but meaningful
+ * Performance: Fast streaming without compromising quality
  */
-export const CURRICULUM_GENERATION_PROMPT = `
-You are a curriculum design assistant. Analyze the following document content and generate a structured curriculum.
+export const CURRICULUM_GENERATION_PROMPT = `Generate a structured curriculum from the document below.
 
-The curriculum must follow this exact hierarchy:
-- Curriculum (top level)
-  - Modules (main sections)
-    - Topics (subsections within modules)
-      - Lessons (individual learning units within topics)
+CRITICAL REQUIREMENTS:
+1. Start generating the FIRST module immediately (streaming optimization)
+2. Generate modules SEQUENTIALLY - complete Module 1 entirely before Module 2
+3. Generate ALL modules found in the document - do not stop after Module 1
+4. Use hierarchical numbering: "Module 1", "Topic 1.1", "Lesson 1.1.1"
+5. Generate meaningful curriculum title and description
+6. Each description should be 1-2 clear, informative sentences
+7. Auto-generate topics/lessons if document lacks detail
 
-IMPORTANT RULES:
-1. If the document mentions modules but lacks topics, generate appropriate topics for each module.
-2. If topics lack lessons, generate at least 2-3 relevant lessons per topic.
-3. Each item should have a clear, descriptive title.
-4. Descriptions should be 1-2 sentences explaining the purpose.
-5. Use the document's language/terminology where possible.
-
-Return ONLY valid JSON in this exact format (no markdown, no code blocks):
+Return ONLY valid JSON (no markdown, no code blocks):
 {
-  "title": "Curriculum Title",
-  "description": "Brief description of the curriculum",
+  "title": "Descriptive Curriculum Title",
+  "description": "Clear 1-2 sentence overview of the curriculum",
   "modules": [
     {
-      "title": "Module 1 - Name",
-      "description": "Module description",
+      "title": "Module 1: Module Name",
+      "description": "1-2 sentences describing this module",
       "topics": [
         {
-          "title": "Topic 1.1 - Name",
-          "description": "Topic description",
+          "title": "Topic 1.1: Topic Name",
+          "description": "1-2 sentences about this topic",
           "lessons": [
             {
-              "title": "Lesson 1.1.1 - Name",
-              "description": "Lesson description"
+              "title": "Lesson 1.1.1: Lesson Name",
+              "description": "1-2 sentences explaining this lesson"
             }
           ]
         }
@@ -50,5 +44,6 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks):
   ]
 }
 
-DOCUMENT CONTENT:
+DOCUMENT:
 `;
+

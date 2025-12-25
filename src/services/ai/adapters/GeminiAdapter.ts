@@ -71,8 +71,16 @@ export class GeminiAdapter implements IAIService {
     try {
       const prompt = CURRICULUM_GENERATION_PROMPT + extractedContent;
       
-      // Use streaming API
-      const result = await this.model.generateContentStream(prompt);
+      // Use streaming API with optimized configuration
+      const result = await this.model.generateContentStream({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.7,        // Lower = faster, more focused
+          topP: 0.9,              // Narrower probability distribution
+          topK: 40,               // Limit candidate tokens for speed
+          // Note: No maxOutputTokens - let it generate complete curriculum
+        },
+      });
       
       let fullText = '';
       let chunkIndex = 0;
@@ -115,10 +123,16 @@ export class GeminiAdapter implements IAIService {
       // Try to extract JSON from the response
       let jsonStr = text;
       
+      logger.debug('Parsing response', {
+        textLength: text.length,
+        preview: text.substring(0, 300)
+      });
+      
       // Remove markdown code blocks if present
       const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (jsonMatch) {
         jsonStr = jsonMatch[1];
+        logger.debug('Removed markdown code blocks');
       }
       
       // Try to find JSON object
@@ -126,14 +140,35 @@ export class GeminiAdapter implements IAIService {
       const endIndex = jsonStr.lastIndexOf('}');
       if (startIndex !== -1 && endIndex !== -1) {
         jsonStr = jsonStr.substring(startIndex, endIndex + 1);
+        logger.debug('Extracted JSON boundaries', {
+          startIndex,
+          endIndex,
+          extractedLength: jsonStr.length
+        });
       }
       
+      logger.debug('Attempting JSON.parse', {
+        jsonLength: jsonStr.length,
+        jsonPreview: jsonStr.substring(0, 200)
+      });
+      
       const parsed = JSON.parse(jsonStr);
+      
+      logger.debug('JSON parsed successfully', {
+        hasTitle: !!parsed.title,
+        hasDescription: !!parsed.description,
+        modulesCount: parsed.modules?.length || 0
+      });
       
       // Add IDs to all items
       return this.addIdsToStructure(parsed);
     } catch (error) {
-      logger.error({ error, text: text.substring(0, 200) }, 'Failed to parse Gemini response');
+      logger.error({ 
+        error,
+        errorMessage: error instanceof Error ? error.message : 'Unknown', 
+        text: text.substring(0, 500),
+        textLength: text.length
+      }, 'Failed to parse Gemini response');
       throw new Error('Failed to parse AI response');
     }
   }
